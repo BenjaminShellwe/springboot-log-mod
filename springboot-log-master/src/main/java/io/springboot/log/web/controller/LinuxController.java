@@ -7,6 +7,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.channels.Channel;
 import java.util.Properties;
 
@@ -21,7 +24,7 @@ public class LinuxController {
     public String hello() {
         System.out.println("hh");
         getConnect();
-
+        getDisconnect();
         return "shellwe is programing!";
     }
 
@@ -30,6 +33,11 @@ public class LinuxController {
         String password = "fps123456";
         String host = "172.168.199.75";
         int port = 1221;
+//        String username = "shellwe_ubuntu";
+//        String password = "shellwe";
+//        String host = "172.19.45.211";
+//        int port = 22;
+
 
 
         // 创建JSch对象
@@ -58,8 +66,11 @@ public class LinuxController {
             // 进行连接
             session.connect();
 
+//            执行命令
+            executeCommand("tail -500  /www/FPS_SERVER/fps-apihk/logs/log_all.log");
             // 获取连接结果
             result = session.isConnected();
+
             System.out.println(result);
 
 
@@ -81,8 +92,78 @@ public class LinuxController {
 
     }
 
+/**
+*   主动断开链接
+*/
     public void getDisconnect() {
         session.disconnect();
         logger.info("[SSH连接]主动断开目标Linux连接");
+    }
+
+/**
+ * 执行Linux命令
+ */
+    public String executeCommand(String command) {
+        ChannelExec channelExec = null;
+        BufferedReader inputStreamReader = null;
+        BufferedReader errInputStreamReader = null;
+        StringBuilder infoLog = new StringBuilder("");
+        StringBuilder errorLog = new StringBuilder("");
+
+        try {
+            channelExec = (ChannelExec) session.openChannel("exec");
+            channelExec.setCommand(command);
+            // 执行命令
+            channelExec.connect();
+            // 获取标准输入流
+            inputStreamReader = new BufferedReader(new InputStreamReader(channelExec.getInputStream()));
+            // 获取标准错误输入流
+            errInputStreamReader = new BufferedReader(new InputStreamReader(channelExec.getErrStream()));
+
+            // 记录命令执行 log
+            String line = null;
+            while ((line = inputStreamReader.readLine()) != null) {
+                infoLog.append(line).append("\n");
+            }
+
+            // 记录命令执行错误 log
+            String errorLine = null;
+            while ((errorLine = errInputStreamReader.readLine()) != null) {
+                errorLog.append(errorLine).append("\n");
+            }
+
+            // 输出 shell 命令执行日志
+            System.out.println("exitStatus=" + channelExec.getExitStatus() + ", openChannel.isClosed="
+                    + channelExec.isClosed());
+            System.out.println("命令执行完成，执行日志如下:");
+            System.out.println(infoLog.toString());
+            System.out.println("命令执行完成，执行错误日志如下:");
+            System.out.println(errorLog.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (inputStreamReader != null) {
+                    inputStreamReader.close();
+                }
+                if (errInputStreamReader != null) {
+                    errInputStreamReader.close();
+                }
+
+                if (channelExec != null) {
+                    channelExec.disconnect();
+                }
+//                if (session != null) {
+//                    session.disconnect();
+//                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+
+
+        return infoLog.toString();
     }
 }
