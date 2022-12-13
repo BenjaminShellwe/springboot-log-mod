@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.channels.Channel;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Controller
 public class LinuxController {
@@ -22,7 +24,6 @@ public class LinuxController {
     @RequestMapping("/1")
     @ResponseBody
     public String hello() {
-        System.out.println("hh");
         getConnect();
         getDisconnect();
         return "shellwe is programing!";
@@ -67,11 +68,11 @@ public class LinuxController {
             session.connect();
 
 //            执行命令
-            executeCommand("tail -500  /www/FPS_SERVER/fps-apihk/logs/log_all.log");
+            executeCommand("tail -5  /www/FPS_SERVER/fps-apihk/logs/log_all.log");
             // 获取连接结果
             result = session.isConnected();
 
-            System.out.println(result);
+//            System.out.println(result);
 
 
         } catch (JSchException e) {
@@ -123,8 +124,19 @@ public class LinuxController {
             // 记录命令执行 log
             String line = null;
             while ((line = inputStreamReader.readLine()) != null) {
+                String looking = "API_HK.{105,300} : ";
+                Pattern pattern = Pattern.compile(looking);
+                Matcher matcher = pattern.matcher(line);
+                if (matcher.find()) {
+
+                    System.out.println(matcher.toString());
+                } else {
+                    System.out.println("no!");
+                }
+
                 infoLog.append(line).append("\n");
             }
+
 
             // 记录命令执行错误 log
             String errorLine = null;
@@ -133,12 +145,14 @@ public class LinuxController {
             }
 
             // 输出 shell 命令执行日志
-            System.out.println("exitStatus=" + channelExec.getExitStatus() + ", openChannel.isClosed="
+            System.out.println("exitStatus="
+                    + channelExec.getExitStatus()
+                    + ", openChannel.isClosed="
                     + channelExec.isClosed());
-            System.out.println("命令执行完成，执行日志如下:");
-            System.out.println(infoLog.toString());
-            System.out.println("命令执行完成，执行错误日志如下:");
-            System.out.println(errorLog.toString());
+            System.out.println("命令执行完成，执行日志如下:先行隐藏");
+//            System.out.println(infoLog.toString());
+            System.out.println("命令执行完成，执行错误日志如下:先行隐藏");
+//            System.out.println(errorLog.toString());
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -153,6 +167,7 @@ public class LinuxController {
                 if (channelExec != null) {
                     channelExec.disconnect();
                 }
+//                注释原因：完成执行命令后断开session
 //                if (session != null) {
 //                    session.disconnect();
 //                }
