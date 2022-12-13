@@ -12,20 +12,24 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.channels.Channel;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Controller
 public class LinuxController {
 
     Session session = null;
     Channel channel = null;
+
+    private static String result = null;
     private static final Logger logger = LoggerFactory.getLogger(LinuxController.class);
     @RequestMapping("/1")
     @ResponseBody
     public String hello() {
-        System.out.println("hh");
         getConnect();
         getDisconnect();
-        return "shellwe is programing!";
+        String str = result.replaceAll("\n","</br>");
+        return str;
     }
 
     public void getConnect() {
@@ -67,7 +71,7 @@ public class LinuxController {
             session.connect();
 
 //            执行命令
-            executeCommand("tail -500  /www/FPS_SERVER/fps-apihk/logs/log_all.log");
+            executeCommand("tail -200  /www/FPS_SERVER/fps-apihk/logs/log_all.log");
             // 获取连接结果
             result = session.isConnected();
 
@@ -103,7 +107,7 @@ public class LinuxController {
 /**
  * 执行Linux命令
  */
-    public String executeCommand(String command) {
+    public void executeCommand(String command) {
         ChannelExec channelExec = null;
         BufferedReader inputStreamReader = null;
         BufferedReader errInputStreamReader = null;
@@ -122,13 +126,39 @@ public class LinuxController {
 
             // 记录命令执行 log
             String line = null;
+            boolean head = false;
             while ((line = inputStreamReader.readLine()) != null) {
-                infoLog.append(line).append("\n");
+
+                String str = line.replaceAll("API_HK.{105,300} : ","");
+                line = str;
+
+                String pattern = "[业务系统报文:]{7}";
+
+                Pattern r = Pattern.compile(pattern);
+                Matcher m = r.matcher(line);
+                if (m.find()) {
+                    head = true;
+
+                }
+                if (head) {
+                    infoLog.append(line).append("\n");
+                }
+
+                String pattern1 = "[业务系统往账处理耗时:]{11}";
+
+                Pattern r1 = Pattern.compile(pattern1);
+                Matcher m1 = r1.matcher(line);
+                if (m1.find()) {
+                    head = false;
+                }
+
+
             }
 
             // 记录命令执行错误 log
             String errorLine = null;
             while ((errorLine = errInputStreamReader.readLine()) != null) {
+
                 errorLog.append(errorLine).append("\n");
             }
 
@@ -137,6 +167,7 @@ public class LinuxController {
                     + channelExec.isClosed());
             System.out.println("命令执行完成，执行日志如下:");
             System.out.println(infoLog.toString());
+            result(infoLog.toString());
             System.out.println("命令执行完成，执行错误日志如下:");
             System.out.println(errorLog.toString());
         } catch (Exception e) {
@@ -164,6 +195,12 @@ public class LinuxController {
 
 
 
-        return infoLog.toString();
+
     }
+
+    public String result(String s) {
+        result = s ;
+        return s;
+    }
+
 }
